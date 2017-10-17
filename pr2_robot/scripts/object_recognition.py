@@ -64,12 +64,38 @@ def pcl_callback(pcl_msg):
     statistical_filter_pub.publish(pcl_to_ros(cloud_filtered))
     # TODO: Voxel Grid Downsampling
     vox = cloud_filtered.make_voxel_grid_filter()
-    LEAF_SIZE = 0.005 #0.005
+    LEAF_SIZE = 0.01 
     vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
     vox_filtered = vox.filter()
-
-    # TODO: PassThrough Filter
+    vox_filter_pub.publish(pcl_to_ros(vox_filtered))
     
+    # TODO: PassThrough Filter
+    # z axis
+    z_passthrough = vox_filtered.make_passthrough_filter()
+    filter_axis = 'z'
+    z_passthrough.set_filter_field_name(filter_axis)
+    axis_min = 0.55
+    axis_max = 0.8
+    z_passthrough.set_filter_limits(axis_min, axis_max)
+    passthrough_filtered = z_passthrough.filter()
+
+    # x axis -> points away from fobot
+
+    x_passthrough = passthrough_filtered.make_passthrough_filter()
+    filter_axis = 'x'
+    x_passthrough.set_filter_field_name(filter_axis)
+    x_passthrough.set_filter_limits(0.4, 0.7)
+    passthrough_filtered = x_passthrough.filter()
+
+    # y axis
+    """
+    y_passthrough = passthrough_filtered.make_passthrough_filter()
+    y_passthrough.set_filter_field_name('y')
+    y_passthrough.set_filter_limits(0.1, 30)
+    passthrough_filtered = y_passthrough.filter()
+    """
+    
+    passthrough_filter_pub.publish(pcl_to_ros(passthrough_filtered))
 
     # TODO: RANSAC Plane Segmentation
 
@@ -161,6 +187,8 @@ if __name__ == '__main__':
     # TODO: Create Publishers
     input_point_cloud_pub = rospy.Publisher("/input_point_cloud", PointCloud2, queue_size = 1)
     statistical_filter_pub = rospy.Publisher("/statistical_filter_pub", PointCloud2, queue_size = 1)
+    vox_filter_pub = rospy.Publisher("/vox_filter_pub", PointCloud2, queue_size = 1)
+    passthrough_filter_pub = rospy.Publisher("/passthrough_filter_pub", PointCloud2, queue_size = 1)
 
     # TODO: Load Model From disk
 
