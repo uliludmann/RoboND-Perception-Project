@@ -6,8 +6,8 @@ import sklearn
 from sklearn.preprocessing import LabelEncoder
 import pickle
 from sensor_stick.srv import GetNormals
-from pr2_robot.features import compute_color_histograms
-from pr2_robot.features import compute_normal_histograms
+from sensor_stick.features import compute_color_histograms
+from sensor_stick.features import compute_normal_histograms
 from visualization_msgs.msg import Marker
 from sensor_stick.marker_tools import *
 from sensor_stick.msg import DetectedObjectsArray
@@ -64,7 +64,7 @@ def pcl_callback(pcl_msg):
     statistical_filter_pub.publish(pcl_to_ros(cloud_filtered))
     # TODO: Voxel Grid Downsampling
     vox = cloud_filtered.make_voxel_grid_filter()
-    LEAF_SIZE = 0.005
+    LEAF_SIZE = 0.01
     vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
     vox_filtered = vox.filter()
     vox_filter_pub.publish(pcl_to_ros(vox_filtered))
@@ -120,8 +120,8 @@ def pcl_callback(pcl_msg):
     tree = white_cloud.make_kdtree()
     ec = white_cloud.make_EuclideanClusterExtraction()
     ec.set_ClusterTolerance(0.05)
-    ec.set_MinClusterSize(100)
-    ec.set_MaxClusterSize(7000)
+    ec.set_MinClusterSize(50)
+    ec.set_MaxClusterSize(700)
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
 
@@ -200,18 +200,39 @@ def pcl_callback(pcl_msg):
 def pr2_mover(object_list):
 
     # TODO: Initialize variables
+    pick_list = []
+    pick_group = []
+    labels = []
+    centroids = []
 
     # TODO: Get/Read parameters
+    object_list_param = rospy.get_param('/object_list')
 
     # TODO: Parse parameters into individual variables
+    for i in object_list_param:
+        pick_list.append(object_list_param[i]['name'])
+        pick_group.append(object_list_param[i]['group'])
+
+    for found_object in object_list:
+        labels.append(found_object.label)
+        points_arr = ros_to_pcl(found_object.cloud).to_array()
+        centroids.append(np.asscalar(np.mean(points_arr, axis=0)[:3]))
 
     # TODO: Rotate PR2 in place to capture side tables for the collision map
 
     # TODO: Loop through the pick list
+    for searched_object in pick_list:
+        idx = labels.index(searched_object)
+        goal = pick_group[idx]
+        print("search for object: %s. goal: %s" % (searched_object, goal))
 
         # TODO: Get the PointCloud for a given object and obtain it's centroid
+        point_cloud = object_list[idx].cloud
+        centroid = centroids[idx]
 
         # TODO: Create 'place_pose' for the object
+        place_pose = Pose()
+
 
         # TODO: Assign the arm to be used for pick_place
 
@@ -260,7 +281,7 @@ if __name__ == '__main__':
 
 
     # TODO: Load Model From disk
-    model_filename = 'model.sav'
+    model_filename = 'model_64bins_100samples_sigmoid.sav'
     model = pickle.load(open(model_filename, 'rb'))
     clf = model['classifier']
     encoder = LabelEncoder()
