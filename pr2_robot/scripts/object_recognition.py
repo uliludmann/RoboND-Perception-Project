@@ -99,31 +99,98 @@ def pcl_callback(pcl_msg):
 
     # TODO: RANSAC Plane Segmentation
 
+    seg = passthrough_filtered.make_segmenter()
+    seg.set_model_type(pcl.SACMODEL_PLANE)
+    seg.set_method_type(pcl.SAC_RANSAC)
+    max_distance = 0.01
+    seg.set_distance_threshold(max_distance)
+
     # TODO: Extract inliers and outliers
+    inliers, coeficcients = seg.segment()
+    extracted_inliers = passthrough_filtered.extract(inliers, negative = False)
+    extracted_outliers = passthrough_filtered.extract(inliers, negative = True)
+    cloud_table = extracted_inliers
+    cloud_objects = extracted_outliers
+
+    ransac_filter_pub.publish(pcl_to_ros(cloud_table))
+    ransac_objects_pub.publish(pcl_to_ros(cloud_objects))
 
     # TODO: Euclidean Clustering
+    white_cloud = XYZRGB_to_XYZ(cloud_objects)
+    tree = white_cloud.make_kdtree()
+    ec = white_cloud.make_EuclideanClusterExtraction()
+    ec.set_ClusterTolerance(0.05)
+    ec.set_MinClusterSize(50)
+    ec.set_MaxClusterSize(700)
+    ec.set_SearchMethod(tree)
+    cluster_indices = ec.Extract()
+
+    print("found clusters: ", np.array(cluster_indices).shape)
 
     # TODO: Create Cluster-Mask Point Cloud to visualize each cluster separately
 
+    cluster_color = get_color_list(len(cluster_indices))
+    color_cluster_point_list = []
+
+
+    for j, indices in enumerate(cluster_indices):
+        for i, indice in enumerate(indices):
+            color_cluster_point_list.append([white_cloud[indice][0],
+                white_cloud[indice][1],
+                white_cloud[indice][2],
+                rgb_to_float(cluster_color[j])]
+                )
     # TODO: Convert PCL data to ROS messages
+    segmented_cloud = pcl.PointCloud_PointXYZRGB()
+    segmented_cloud.from_list(color_cluster_point_list)
+
 
     # TODO: Publish ROS messages
 
+    segmented_cloud_pub.publish(pcl_to_ros(segmented_cloud))
+
 # Exercise-3 TODOs:
+    detected_objects_labels = []
+    detected_objects = []
 
     # Classify the clusters! (loop through each detected cluster one at a time)
+    for index, pts_list in enumerate(cluster_indices):
 
+        
         # Grab the points for the cluster
+        cluster = cloud_objects.extract(pts_list)
+        cluster_publisher.publish(pcl_to_ros(cluster))
 
-        # Compute the associated feature vector
+        ros_cluster = pcl_to_ros(cluster)
+        # Compute the Assigociated feature vector
+
+        chists = compute_color_histograms(ros_cluster, using_hsv = True)
+        normals = get_normals(ros_cluster)
+        nhists = compute_normal_histograms(normals)
+        feature = np.concatenate((chists, nhists))
 
         # Make the prediction
 
+        prediction = compute_color_histograms(scaler.transform(feature.reshape(1, -1)))
+        label = encoder.inverse_transform(prediction)[0]
+        detected_objects_labels.append(label)
+
         # Publish a label into RViz
+        label_pos = list(white_cloud[pts_list[0]])
+        label_pos[2] += 1
+        object_markers_pub.publish(make_label(label, label_pos, index))
 
         # Add the detected object to the list of detected objects.
 
+        do = DetectedObject()
+        do.label = label
+        do.cloud = pcl_cluster
+        detected_objects.append(do)
+
+
     # Publish the list of detected objects
+
+    rospy.loginfo()
 
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
@@ -189,6 +256,12 @@ if __name__ == '__main__':
     statistical_filter_pub = rospy.Publisher("/statistical_filter_pub", PointCloud2, queue_size = 1)
     vox_filter_pub = rospy.Publisher("/vox_filter_pub", PointCloud2, queue_size = 1)
     passthrough_filter_pub = rospy.Publisher("/passthrough_filter_pub", PointCloud2, queue_size = 1)
+    ransac_filter_pub = rospy.Publisher("/ransac_filter_pub", PointCloud2, queue_size = 1)
+    ransac_objects_pub = rospy.Publisher("/ransac_objects_pub", PointCloud2, queue_size = 1)
+    cluster_publisher =rospy.Publisher("/cluster_publisher", PointCloud2, queue_size = 1)
+
+    segmented_cloud_pub = rospy.Publisher("/segmented_cloud", PointCloud2, queue_size = 1)
+
 
     # TODO: Load Model From disk
 
