@@ -6,8 +6,8 @@ import sklearn
 from sklearn.preprocessing import LabelEncoder
 import pickle
 from sensor_stick.srv import GetNormals
-from sensor_stick.features import compute_color_histograms
-from sensor_stick.features import compute_normal_histograms
+from pr2_robot.features import compute_color_histograms
+from pr2_robot.features import compute_normal_histograms
 from visualization_msgs.msg import Marker
 from sensor_stick.marker_tools import *
 from sensor_stick.msg import DetectedObjectsArray
@@ -64,7 +64,7 @@ def pcl_callback(pcl_msg):
     statistical_filter_pub.publish(pcl_to_ros(cloud_filtered))
     # TODO: Voxel Grid Downsampling
     vox = cloud_filtered.make_voxel_grid_filter()
-    LEAF_SIZE = 0.01 
+    LEAF_SIZE = 0.005
     vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
     vox_filtered = vox.filter()
     vox_filter_pub.publish(pcl_to_ros(vox_filtered))
@@ -120,19 +120,16 @@ def pcl_callback(pcl_msg):
     tree = white_cloud.make_kdtree()
     ec = white_cloud.make_EuclideanClusterExtraction()
     ec.set_ClusterTolerance(0.05)
-    ec.set_MinClusterSize(50)
-    ec.set_MaxClusterSize(700)
+    ec.set_MinClusterSize(100)
+    ec.set_MaxClusterSize(7000)
     ec.set_SearchMethod(tree)
     cluster_indices = ec.Extract()
 
     print("found clusters: ", np.array(cluster_indices).shape)
 
     # TODO: Create Cluster-Mask Point Cloud to visualize each cluster separately
-
     cluster_color = get_color_list(len(cluster_indices))
     color_cluster_point_list = []
-
-
     for j, indices in enumerate(cluster_indices):
         for i, indice in enumerate(indices):
             color_cluster_point_list.append([white_cloud[indice][0],
@@ -140,13 +137,12 @@ def pcl_callback(pcl_msg):
                 white_cloud[indice][2],
                 rgb_to_float(cluster_color[j])]
                 )
-    # TODO: Convert PCL data to ROS messages
     segmented_cloud = pcl.PointCloud_PointXYZRGB()
     segmented_cloud.from_list(color_cluster_point_list)
-
-
+    
+    # TODO: Convert PCL data to ROS messages
     # TODO: Publish ROS messages
-
+    
     segmented_cloud_pub.publish(pcl_to_ros(segmented_cloud))
 
 # Exercise-3 TODOs:
@@ -158,10 +154,10 @@ def pcl_callback(pcl_msg):
 
         
         # Grab the points for the cluster
-        cluster = cloud_objects.extract(pts_list)
-        cluster_publisher.publish(pcl_to_ros(cluster))
+        pcl_cluster = cloud_objects.extract(pts_list)
+        cluster_publisher.publish(pcl_to_ros(pcl_cluster))
 
-        ros_cluster = pcl_to_ros(cluster)
+        ros_cluster = pcl_to_ros(pcl_cluster)
         # Compute the Assigociated feature vector
 
         chists = compute_color_histograms(ros_cluster, using_hsv = True)
@@ -170,18 +166,16 @@ def pcl_callback(pcl_msg):
         feature = np.concatenate((chists, nhists))
 
         # Make the prediction
-
-        prediction = compute_color_histograms(scaler.transform(feature.reshape(1, -1)))
+        prediction = clf.predict(scaler.transform(feature.reshape(1, -1)))
         label = encoder.inverse_transform(prediction)[0]
         detected_objects_labels.append(label)
 
         # Publish a label into RViz
         label_pos = list(white_cloud[pts_list[0]])
-        label_pos[2] += 1
+        label_pos[2] += .25
         object_markers_pub.publish(make_label(label, label_pos, index))
 
         # Add the detected object to the list of detected objects.
-
         do = DetectedObject()
         do.label = label
         do.cloud = pcl_cluster
@@ -190,7 +184,7 @@ def pcl_callback(pcl_msg):
 
     # Publish the list of detected objects
 
-    rospy.loginfo()
+    rospy.loginfo('Detected {} objects {}'.format(len(detected_objects_labels), detected_objects_labels))
 
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
@@ -260,10 +254,18 @@ if __name__ == '__main__':
     ransac_objects_pub = rospy.Publisher("/ransac_objects_pub", PointCloud2, queue_size = 1)
     cluster_publisher =rospy.Publisher("/cluster_publisher", PointCloud2, queue_size = 1)
 
+    object_markers_pub = rospy.Publisher("/object_markers", Marker, queue_size=1)
+
     segmented_cloud_pub = rospy.Publisher("/segmented_cloud", PointCloud2, queue_size = 1)
 
 
     # TODO: Load Model From disk
+    model_filename = 'model.sav'
+    model = pickle.load(open(model_filename, 'rb'))
+    clf = model['classifier']
+    encoder = LabelEncoder()
+    encoder.classes_ = model['classes']
+    scaler = model['scaler']
 
     # Initialize color_list
     get_color_list.color_list = []
