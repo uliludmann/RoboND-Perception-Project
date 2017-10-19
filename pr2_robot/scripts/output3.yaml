@@ -1,4 +1,50 @@
 object_list:
+- arm_name: left
+  object_name: sticky_notes
+  pick_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.43939149379730225
+      y: 0.21652920544147491
+      z: 0.6827041506767273
+  place_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0
+      y: 0.71
+      z: 0.7
+  test_scene_num: 3
+- arm_name: left
+  object_name: book
+  pick_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.4905039966106415
+      y: 0.08371016383171082
+      z: 0.7113906145095825
+  place_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0
+      y: 0.71
+      z: 0.7
+  test_scene_num: 3
 - arm_name: right
   object_name: biscuits
   pick_pose:
@@ -8,9 +54,9 @@ object_list:
       y: 0.0
       z: 0.0
     position:
-      x: 0.5891467332839966
-      y: -0.21819230914115906
-      z: 0.7048975825309753
+      x: 0.5893035531044006
+      y: -0.21868234872817993
+      z: 0.7049660086631775
   place_pose:
     orientation:
       w: 0.0
@@ -23,6 +69,29 @@ object_list:
       z: 0.7
   test_scene_num: 3
 - arm_name: left
+  object_name: eraser
+  pick_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.4278523921966553
+      y: -0.3373633623123169
+      z: 0.7102713584899902
+  place_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0
+      y: 0.71
+      z: 0.7
+  test_scene_num: 3
+- arm_name: right
   object_name: soap2
   pick_pose:
     orientation:
@@ -31,9 +100,32 @@ object_list:
       y: 0.0
       z: 0.0
     position:
-      x: 0.45511293411254883
-      y: -0.0440087765455246
-      z: 0.6764788627624512
+      x: 0.45506805181503296
+      y: -0.04389576613903046
+      z: 0.6763218641281128
+  place_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0
+      y: -0.71
+      z: 0.7
+  test_scene_num: 3
+- arm_name: left
+  object_name: glue
+  pick_pose:
+    orientation:
+      w: 0.0
+      x: 0.0
+      y: 0.0
+      z: 0.0
+    position:
+      x: 0.6574745774269104
+      y: 0.04105442762374878
+      z: 0.6737622618675232
   place_pose:
     orientation:
       w: 0.0

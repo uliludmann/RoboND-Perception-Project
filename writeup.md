@@ -1,56 +1,83 @@
 ## Project: Perception Pick & Place
 ### Writeup Template: You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
 
+
+Writeup for the Pick&Place Project handed in by Ulrich Ludmann
+
+[world1](/assets/world3_100.png)
+[confusionmatrix](/assets/confusion_matrix.png)
 ---
 
-
-# Required Steps for a Passing Submission:
-1. Extract features and train an SVM model on new objects (see `pick_list_*.yaml` in `/pr2_robot/config/` for the list of models you'll be trying to identify). 
-2. Write a ROS node and subscribe to `/pr2/world/points` topic. This topic contains noisy point cloud data that you must work with.
-3. Use filtering and RANSAC plane fitting to isolate the objects of interest from the rest of the scene.
-4. Apply Euclidean clustering to create separate clusters for individual items.
-5. Perform object recognition on these objects and assign them labels (markers in RViz).
-6. Calculate the centroid (average in x, y and z) of the set of points belonging to that each object.
-7. Create ROS messages containing the details of each object (name, pick_pose, etc.) and write these messages out to `.yaml` files, one for each of the 3 scenarios (`test1-3.world` in `/pr2_robot/worlds/`).  [See the example `output.yaml` for details on what the output should look like.](https://github.com/udacity/RoboND-Perception-Project/blob/master/pr2_robot/config/output.yaml)  
-8. Submit a link to your GitHub repo for the project or the Python code for your perception pipeline and your output `.yaml` files (3 `.yaml` files, one for each test world).  You must have correctly identified 100% of objects from `pick_list_1.yaml` for `test1.world`, 80% of items from `pick_list_2.yaml` for `test2.world` and 75% of items from `pick_list_3.yaml` in `test3.world`.
-9. Congratulations!  Your Done!
-
-# Extra Challenges: Complete the Pick & Place
-7. To create a collision map, publish a point cloud to the `/pr2/3d_map/points` topic and make sure you change the `point_cloud_topic` to `/pr2/3d_map/points` in `sensors.yaml` in the `/pr2_robot/config/` directory. This topic is read by Moveit!, which uses this point cloud input to generate a collision map, allowing the robot to plan its trajectory.  Keep in mind that later when you go to pick up an object, you must first remove it from this point cloud so it is removed from the collision map!
-8. Rotate the robot to generate collision map of table sides. This can be accomplished by publishing joint angle value(in radians) to `/pr2/world_joint_controller/command`
-9. Rotate the robot back to its original state.
-10. Create a ROS Client for the “pick_place_routine” rosservice.  In the required steps above, you already created the messages you need to use this service. Checkout the [PickPlace.srv](https://github.com/udacity/RoboND-Perception-Project/tree/master/pr2_robot/srv) file to find out what arguments you must pass to this service.
-11. If everything was done correctly, when you pass the appropriate messages to the `pick_place_routine` service, the selected arm will perform pick and place operation and display trajectory in the RViz window
-12. Place all the objects from your pick list in their respective dropoff box and you have completed the challenge!
-13. Looking for a bigger challenge?  Load up the `challenge.world` scenario and see if you can get your perception pipeline working there!
 
 ## [Rubric](https://review.udacity.com/#!/rubrics/1067/view) Points
 ### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
 
 ---
-### Writeup / README
+## Writeup / README
 
-#### 1. Provide a Writeup / README that includes all the rubric points and how you addressed each one.  You can submit your writeup as markdown or pdf.  
 
-You're reading it!
 
-### Exercise 1, 2 and 3 pipeline implemented
-#### 1. Complete Exercise 1 steps. Pipeline for filtering and RANSAC plane fitting implemented.
+The challenge in this Project is to implement a perception pipeline into a given ROS Environment. In the End it should recognize all Objects on the Table and provide a yaml file that contains the centroids of Objects, which are requested by the server. 
 
-#### 2. Complete Exercise 2 steps: Pipeline including clustering for segmentation implemented.  
+### Segmentation
+We are provided by a ros pont cloud, that needs be converted to the pcl format before we can apply or processing. 
+'''python
+cloud = ros_to_pcl(pcl_msg)
+'''
 
-#### 2. Complete Exercise 3 Steps.  Features extracted and SVM trained.  Object recognition implemented.
-Here is an example of how to include an image in your writeup.
+#### Statistical outlier filter
 
-![demo-1](https://user-images.githubusercontent.com/20687560/28748231-46b5b912-7467-11e7-8778-3095172b7b19.png)
+It turns out that the point cloud is noisy. So the first Step in our perception pipeline is to remove the outliers with a statistical outlier filter.
+'''python
+outlier_filter = cloud.make_statistical_outlier_filter()
+outlier_filter.set_mean_k(10) #set number of neighboring points to analyze
+outlier_filter.set_std_dev_mul_thresh(0.003) # any point with a mean distance larger rhan global(mean distance+x * std dev) will be considered as a outlier
+cloud_filtered = outlier_filter.filter()
+statistical_filter_pub.publish(pcl_to_ros(cloud_filtered)) #publish filtered pointcloud
+ '''
+
+#### Voxel Grid
+
+Then we can apply a voxel grid filter to reduce the amount of points in the pointcloud. When we reduce this amount, the processing is faster. 
+
+'''python
+vox = cloud_filtered.make_voxel_grid_filter()
+LEAF_SIZE = 0.01 #turned out to be a reasonable numer. smaller = more points in the cluster = more cpu power needed
+vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
+vox_filtered = vox.filter()
+vox_filter_pub.publish(pcl_to_ros(vox_filtered))
+'''
+
+#### Passthrough filtering
+
+we know the place where our objects are located (on the table). That means, we can ignore everything else outside of these borders. So its possible to apply a passthrough filter in 2 directions.
+
+
+#### Filter the Table out
+
+After the passthrough we can Separate the Objects on the table from the table. 
+
+#### Euclidean Clustering
+
+As we now see the objects on the table, it is possible to measure the distances between the points and cluster them by their relative positions. This is the last step in Segmentation. 
+
+## Recognition
+We recognize the Objects by their color and shape. 
+
+### SVM Feature Extraction and Training
+
+Before a classification can be applied, I had to train the classifier. I trained a SVM Classifier many times to see what parameters were the best. It turned out that 300 samples of each object and a bin size of 64 in the histogram classifier were the best. I sampled the color histograms and the normal histograms (to account for the shape of the object). 
+I decided to go for the sigmoid Kernel. After approximately 10 tries with different parameters this classifier turned out to be the most stable one. 
+
+My final confusion matrix looks like this:
+![confusion_matrix]
+
 
 ### Pick and Place Setup
 
-#### 1. For all three tabletop setups (`test*.world`), perform object recognition, then read in respective pick list (`pick_list_*.yaml`). Next construct the messages that would comprise a valid `PickPlace` request output them to `.yaml` format.
 
-And here's another image! 
-![demo-2](https://user-images.githubusercontent.com/20687560/28748286-9f65680e-7468-11e7-83dc-f1a32380b89c.png)
 
 Spend some time at the end to discuss your code, what techniques you used, what worked and why, where the implementation might fail and how you might improve it if you were going to pursue this project further.  
 
 
+`

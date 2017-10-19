@@ -265,7 +265,7 @@ def pr2_mover(object_list):
         PLACE_POSE = Pose()
         # TODO: Assign the arm to be used for pick_place
         WHICH_ARM = String()
-        
+
         if target_dropbox == "green": 
             WHICH_ARM.data = "right"
             PLACE_POSE.position.x, PLACE_POSE.position.y, PLACE_POSE.position.z = [0, -0.71, 0.7 ]
