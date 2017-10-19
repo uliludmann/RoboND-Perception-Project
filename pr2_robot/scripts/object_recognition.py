@@ -207,9 +207,14 @@ def pr2_mover(object_list):
 
     not_found_objects = []
 
+    dict_list = []
+
     # TODO: Get/Read parameters
     object_list_param = rospy.get_param('/object_list')
     dropbox_parameters = rospy.get_param('/dropbox')
+    world_name = 1 #rospy.get_param("~world_name")
+
+
     print('Object list parameters %s' % (object_list_param))
     print('Dropbox parameters %s' % (dropbox_parameters))
 
@@ -220,7 +225,7 @@ def pr2_mover(object_list):
         pick_group.append(pl_object['group'])
 
     print('Pick list %s' %(pick_list))
-
+    print('Pick group %s' %(pick_group))
 
     for found_object in object_list:
         labels.append(found_object.label)
@@ -228,44 +233,55 @@ def pr2_mover(object_list):
     print(labels)
 
     for pick_object in pick_list:
+        print('pick object', pick_object)
         try:
             index = labels.index(pick_object)
         except ValueError:
             not_found_objects.append(pick_object)
+            print('Object %s not found. Continuing with next Object in pick list' %(pick_object))
             continue
+        # TODO: Get the PointCloud for a given object and obtain it's centroid
         points_arr = object_list[index].cloud.to_array()
         center = np.mean(points_arr, axis=0)[:3]
         center_scalar = []
+        pick_pose = Pose()
         for i in center:
             center_scalar.append(np.asscalar(i))
+        pick_pose.position.x, pick_pose.position.y, pick_pose.position.z = center_scalar
+        print(pick_pose)
+        PICK_POSE = pick_pose
+
         centroids.append(center_scalar)
-    print("These Objects were not found on the table: %s" %(pick_object))
-    print("centroids list %s" %(centroids))
 
-    #rospy.loginfo('Pick list {}, means {}'.format(len(detected_objects_labels), detected_objects_labels))
-    """
+        target_dropbox = pick_group[index]
 
-    # TODO: Rotate PR2 in place to capture side tables for the collision map
+        TEST_SCENE_NUM = Int32()
+        TEST_SCENE_NUM.data = world_name
+        OBJECT_NAME = String()
+        OBJECT_NAME.data = pick_object
 
-    # TODO: Loop through the pick list
-    for searched_object in pick_list:
-        idx = labels.index(searched_object)
-        goal = pick_group[idx]
-        print("search for object: %s. goal: %s" % (searched_object, goal))
-
-        # TODO: Get the PointCloud for a given object and obtain it's centroid
-        point_cloud = object_list[idx].cloud
-        centroid = centroids[idx]
 
         # TODO: Create 'place_pose' for the object
-        place_pose = Pose()
-
-
+        PLACE_POSE = Pose()
         # TODO: Assign the arm to be used for pick_place
+
+        WHICH_ARM = String()
+        if target_dropbox == "green": 
+            WHICH_ARM.data = "right"
+            PLACE_POSE.position.x, PLACE_POSE.position.y, PLACE_POSE.position.z = [0, -0.71, 0.7 ]
+        else:
+            WHICH_ARM.data = "left"
+            PLACE_POSE.position.x, PLACE_POSE.position.y, PLACE_POSE.position.z = [0, +0.71, 0.7]
+
 
         # TODO: Create a list of dictionaries (made with make_yaml_dict()) for later output to yaml format
 
+        for i in range(0, len(object_list_param)):
+            yaml_dict = make_yaml_dict(TEST_SCENE_NUM, WHICH_ARM, OBJECT_NAME, PICK_POSE, PLACE_POSE)
+            dict_list.append(yaml_dict)
+
         # Wait for 'pick_place_routine' service to come up
+       
         rospy.wait_for_service('pick_place_routine')
 
         try:
@@ -279,9 +295,22 @@ def pr2_mover(object_list):
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
 
+
         """
 
     # TODO: Output your request parameters into output yaml file
+        place_pose = Pose()
+    rospy.loginfo("These Objects were not found on the table: %s" %(pick_object))
+    #print("centroids list %s" %(centroids))
+
+
+    ###
+
+
+    #rospy.loginfo('Pick list {}, means {}'.format(len(detected_objects_labels), detected_objects_labels))
+    """
+
+    # TODO: Rotate PR2 in place to capture side tables for the collision map
 
 
 
