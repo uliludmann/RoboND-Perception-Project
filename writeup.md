@@ -19,7 +19,6 @@ Writeup for the Pick&Place Project handed in by Ulrich Ludmann
 
 The challenge in this Project is to implement a perception pipeline into a given ROS Environment. In the End it should recognize all Objects on the Table and provide a yaml file that contains the centroids of Objects, which are requested by the server.
 
-![world1](/assets/world3_100.png)]
 
 ### Segmentation
 We are provided by a ros pont cloud, that needs be converted to the pcl format before we can apply or processing.
@@ -76,7 +75,7 @@ My final confusion matrix looks like this:
 
 
 ### Pick and Place Setup
-The Object Recognition works quiet OK. I couldnt really figure out which gazebo-parameters influence the stability of the recognition. Sometime it is possible to recognize 100% of the objects in world3 - sometimes 1 Object is wrong  I could recognize that more samples lead to a better recognition and also hsv is far better to recognize objects. 
+The Object Recognition works quiet OK. I couldnt really figure out which gazebo-parameters influence the stability of the recognition. Sometime it is possible to recognize 100% of the objects in world3 - sometimes 1 Object is wrong  I could recognize that more samples lead to a better recognition and also hsv is far better to recognize objects.
 Also I played around with the SVM kernels. Here I tried linear, rbf and sigmoid.
 Rbf worked fine in the exercises but not in the project. Linear performed not that good.
 Its possible to convert into other colorspaces and try to get a better performance for the perception. But my VM performes very poor and so it takes a lot of efford to go on. After term 1 I'll try to install ubuntu natively.
