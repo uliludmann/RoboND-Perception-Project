@@ -189,12 +189,12 @@ def pcl_callback(pcl_msg):
     # Suggested location for where to invoke your pr2_mover() function within pcl_callback()
     # Could add some logic to determine whether or not your object detections are robust
     # before calling pr2_mover()
-    """
+    
     try:
-        pr2_mover(detected_objects_list)
+        pr2_mover(detected_objects)
     except rospy.ROSInterruptException:
         pass
-    """
+    
 
 # function to load parameters and request PickPlace service
 def pr2_mover(object_list):
@@ -205,18 +205,45 @@ def pr2_mover(object_list):
     labels = []
     centroids = []
 
+    not_found_objects = []
+
     # TODO: Get/Read parameters
     object_list_param = rospy.get_param('/object_list')
+    dropbox_parameters = rospy.get_param('/dropbox')
+    print('Object list parameters %s' % (object_list_param))
+    print('Dropbox parameters %s' % (dropbox_parameters))
+
 
     # TODO: Parse parameters into individual variables
-    for i in object_list_param:
-        pick_list.append(object_list_param[i]['name'])
-        pick_group.append(object_list_param[i]['group'])
+    for pl_object in object_list_param:
+        pick_list.append(pl_object['name'])
+        pick_group.append(pl_object['group'])
+
+    print('Pick list %s' %(pick_list))
+
 
     for found_object in object_list:
         labels.append(found_object.label)
-        points_arr = ros_to_pcl(found_object.cloud).to_array()
-        centroids.append(np.asscalar(np.mean(points_arr, axis=0)[:3]))
+
+    print(labels)
+
+    for pick_object in pick_list:
+        try:
+            index = labels.index(pick_object)
+        except ValueError:
+            not_found_objects.append(pick_object)
+            continue
+        points_arr = object_list[index].cloud.to_array()
+        center = np.mean(points_arr, axis=0)[:3]
+        center_scalar = []
+        for i in center:
+            center_scalar.append(np.asscalar(i))
+        centroids.append(center_scalar)
+    print("These Objects were not found on the table: %s" %(pick_object))
+    print("centroids list %s" %(centroids))
+
+    #rospy.loginfo('Pick list {}, means {}'.format(len(detected_objects_labels), detected_objects_labels))
+    """
 
     # TODO: Rotate PR2 in place to capture side tables for the collision map
 
@@ -251,6 +278,8 @@ def pr2_mover(object_list):
 
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
+
+        """
 
     # TODO: Output your request parameters into output yaml file
 
