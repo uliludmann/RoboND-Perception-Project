@@ -68,6 +68,14 @@ I decided to go for the sigmoid Kernel. After approximately 10 tries with differ
 My final confusion matrix looks like this:
 ![confusionmatrix](/assets/confusion_matrix.png)
 
+## Screenshots of the recognition
+### world 1
+![world1](/assets/world1.png)
+### world 2
+![world2](assets/world2.png)
+### world 3
+![world3](/assets/world3_final.png)
+
 
 ### Pick and Place Setup
 The Object Recognition works quiet OK. I couldnt really figure out which gazebo-parameters influence the stability of the recognition. Sometime it is possible to recognize 100% of the objects in world3 - sometimes 1 Object is wrong  I could recognize that more samples lead to a better recognition and also hsv is far better to recognize objects.
