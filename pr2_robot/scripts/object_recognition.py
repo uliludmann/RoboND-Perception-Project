@@ -212,7 +212,7 @@ def pr2_mover(object_list):
     # TODO: Get/Read parameters
     object_list_param = rospy.get_param('/object_list')
     dropbox_parameters = rospy.get_param('/dropbox')
-    world_name = 1 #rospy.get_param("~world_name")
+    world_name = 3 #rospy.get_param("~world_name")
 
 
     print('Object list parameters %s' % (object_list_param))
@@ -220,9 +220,11 @@ def pr2_mover(object_list):
 
 
     # TODO: Parse parameters into individual variables
+    
     for pl_object in object_list_param:
         pick_list.append(pl_object['name'])
-        pick_group.append(pl_object['group'])
+        #pick_group.append(pl_object['group'])
+    
 
     print('Pick list %s' %(pick_list))
     print('Pick group %s' %(pick_group))
@@ -230,16 +232,19 @@ def pr2_mover(object_list):
     for found_object in object_list:
         labels.append(found_object.label)
 
-    print(labels)
+    print("Found these objects %s" %(labels))
 
-    for pick_object in pick_list:
-        print('pick object', pick_object)
+
+    for pick_object in range(len(pick_list)):
+        print('pick object', object_list_param[pick_object]['name'])
         try:
-            index = labels.index(pick_object)
+            index = labels.index(object_list_param[pick_object]['name'])
         except ValueError:
-            not_found_objects.append(pick_object)
-            print('Object %s not found. Continuing with next Object in pick list' %(pick_object))
+            not_found_objects.append(object_list_param[pick_object]['name'])
+            print('Object %s not found. Continuing with next Object in pick list' %(object_list_param[pick_object]['name']))
             continue
+
+
         # TODO: Get the PointCloud for a given object and obtain it's centroid
         points_arr = object_list[index].cloud.to_array()
         center = np.mean(points_arr, axis=0)[:3]
@@ -248,23 +253,22 @@ def pr2_mover(object_list):
         for i in center:
             center_scalar.append(np.asscalar(i))
         pick_pose.position.x, pick_pose.position.y, pick_pose.position.z = center_scalar
-        print(pick_pose)
+        #print(pick_pose)
         PICK_POSE = pick_pose
 
         centroids.append(center_scalar)
 
-        target_dropbox = pick_group[index]
+        target_dropbox = object_list_param[pick_object]['group']
+        
 
         TEST_SCENE_NUM = Int32()
         TEST_SCENE_NUM.data = world_name
         OBJECT_NAME = String()
-        OBJECT_NAME.data = pick_object
-
+        OBJECT_NAME.data = object_list_param[pick_object]['name']
 
         # TODO: Create 'place_pose' for the object
         PLACE_POSE = Pose()
         # TODO: Assign the arm to be used for pick_place
-
         WHICH_ARM = String()
         if target_dropbox == "green": 
             WHICH_ARM.data = "right"
@@ -275,18 +279,16 @@ def pr2_mover(object_list):
 
 
         # TODO: Create a list of dictionaries (made with make_yaml_dict()) for later output to yaml format
-
-        for i in range(0, len(object_list_param)):
+        for i in range(0, len(pick_list)):
             yaml_dict = make_yaml_dict(TEST_SCENE_NUM, WHICH_ARM, OBJECT_NAME, PICK_POSE, PLACE_POSE)
-            dict_list.append(yaml_dict)
+            if yaml_dict not in dict_list:
+                dict_list.append(yaml_dict)
 
         # Wait for 'pick_place_routine' service to come up
-       
-        rospy.wait_for_service('pick_place_routine')
-
+        
+        """
         try:
             pick_place_routine = rospy.ServiceProxy('pick_place_routine', PickPlace)
-
             # TODO: Insert your message variables to be sent as a service request
             resp = pick_place_routine(TEST_SCENE_NUM, OBJECT_NAME, WHICH_ARM, PICK_POSE, PLACE_POSE)
 
@@ -294,13 +296,15 @@ def pr2_mover(object_list):
 
         except rospy.ServiceException, e:
             print "Service call failed: %s"%e
-
-
         """
 
+
     # TODO: Output your request parameters into output yaml file
-        place_pose = Pose()
-    rospy.loginfo("These Objects were not found on the table: %s" %(pick_object))
+    send_to_yaml('output' + str(world_name) + '.yaml', dict_list)
+    rospy.wait_for_service('pick_place_routine')
+    if not_found_objects:
+        rospy.loginfo("These Objects were not found on the table: %s" %(not_found_objects))
+
     #print("centroids list %s" %(centroids))
 
 
@@ -308,7 +312,7 @@ def pr2_mover(object_list):
 
 
     #rospy.loginfo('Pick list {}, means {}'.format(len(detected_objects_labels), detected_objects_labels))
-    """
+
 
     # TODO: Rotate PR2 in place to capture side tables for the collision map
 
@@ -339,7 +343,7 @@ if __name__ == '__main__':
 
 
     # TODO: Load Model From disk
-    model_filename = 'model_64bins_100samples_sigmoid.sav'
+    model_filename = 'model_64bins_300samples_sigmoid.sav'
     model = pickle.load(open(model_filename, 'rb'))
     clf = model['classifier']
     encoder = LabelEncoder()

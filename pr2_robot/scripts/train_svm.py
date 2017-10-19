@@ -36,7 +36,7 @@ def plot_confusion_matrix(cm, classes,
     plt.xlabel('Predicted label')
 
 # Load training data from disk
-training_set = pickle.load(open('training_set_project_64bins_100samples', 'rb'))
+training_set = pickle.load(open('training_set_project_64bins_300samples', 'rb'))
 
 # Format the features and labels for use with scikit learn
 feature_list = []
@@ -101,7 +101,7 @@ clf.fit(X=X_train, y=y_train)
 model = {'classifier': clf, 'classes': encoder.classes_, 'scaler': X_scaler}
 
 # Save classifier to disk
-pickle.dump(model, open('model_64bins_100samples_sigmoid.sav', 'wb'))
+pickle.dump(model, open('model_64bins_300samples_sigmoid.sav', 'wb'))
 
 # Plot non-normalized confusion matrix
 plt.figure()

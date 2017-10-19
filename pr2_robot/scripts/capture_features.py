@@ -41,7 +41,7 @@ if __name__ == '__main__':
     for model_name in models:
         spawn_model(model_name)
 
-        for i in range(100):
+        for i in range(300):
             if i % 10 == 0:
                 print(model_name)
                 print(i)
@@ -69,5 +69,5 @@ if __name__ == '__main__':
         delete_model()
 
 
-    pickle.dump(labeled_features, open('training_set_project_64bins_100samples', 'wb'))
+    pickle.dump(labeled_features, open('training_set_project_64bins_300samples', 'wb'))
 
