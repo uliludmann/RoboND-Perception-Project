@@ -58,67 +58,65 @@ def pcl_callback(pcl_msg):
     # TODO: Statistical Outlier Filtering
     outlier_filter = cloud.make_statistical_outlier_filter()
     outlier_filter.set_mean_k(10) #set number of neighboring points to analyze
-    outlier_filter.set_std_dev_mul_thresh(0.003) #0.05 any point with a mean distance larger rhan global(mean distance+x * std dev) will be considered as a outlier
+    outlier_filter.set_std_dev_mul_thresh(0.003) # any point with a mean distance larger rhan global(mean distance+x * std dev) will be considered as a outlier
     #call the filter
     cloud_filtered = outlier_filter.filter()
-    statistical_filter_pub.publish(pcl_to_ros(cloud_filtered))
+    statistical_filter_pub.publish(pcl_to_ros(cloud_filtered)) #publish filtered pointcloud
+    
+
     # TODO: Voxel Grid Downsampling
     vox = cloud_filtered.make_voxel_grid_filter()
-    LEAF_SIZE = 0.01
+    LEAF_SIZE = 0.01 #turned out to be a reasonable numer. smaller = more points in the cluster = more cpu power needed
     vox.set_leaf_size(LEAF_SIZE, LEAF_SIZE, LEAF_SIZE)
     vox_filtered = vox.filter()
     vox_filter_pub.publish(pcl_to_ros(vox_filtered))
     
     # TODO: PassThrough Filter
+    # i apply filters on z and y axis. Parameters are found iteratively.
     # z axis
-    z_passthrough = vox_filtered.make_passthrough_filter()
-    filter_axis = 'z'
-    z_passthrough.set_filter_field_name(filter_axis)
+    z_passthrough = vox_filtered.make_passthrough_filter() #instanciate filter 
+    z_passthrough.set_filter_field_name('z') # set filteraxis
+    # set min and max
     axis_min = 0.55
     axis_max = 0.8
     z_passthrough.set_filter_limits(axis_min, axis_max)
-    passthrough_filtered = z_passthrough.filter()
+    passthrough_filtered = z_passthrough.filter() #apply filter.
 
-    # x axis -> points away from fobot
+    # x axis -> points away from fobot. Same procedure as above.
 
     x_passthrough = passthrough_filtered.make_passthrough_filter()
     filter_axis = 'x'
     x_passthrough.set_filter_field_name(filter_axis)
     x_passthrough.set_filter_limits(0.4, 0.7)
     passthrough_filtered = x_passthrough.filter()
-
-    # y axis
-    """
-    y_passthrough = passthrough_filtered.make_passthrough_filter()
-    y_passthrough.set_filter_field_name('y')
-    y_passthrough.set_filter_limits(0.1, 30)
-    passthrough_filtered = y_passthrough.filter()
-    """
     
-    passthrough_filter_pub.publish(pcl_to_ros(passthrough_filtered))
+    passthrough_filter_pub.publish(pcl_to_ros(passthrough_filtered)) #publish filtered cloud.
 
     # TODO: RANSAC Plane Segmentation
-
+    # here we separate the table from the other things in the pointcloud. 
     seg = passthrough_filtered.make_segmenter()
-    seg.set_model_type(pcl.SACMODEL_PLANE)
+    seg.set_model_type(pcl.SACMODEL_PLANE) #import the model that we want to find.
     seg.set_method_type(pcl.SAC_RANSAC)
-    max_distance = 0.01
+    max_distance = 0.01 #turns out to be a reasonable number.
     seg.set_distance_threshold(max_distance)
 
     # TODO: Extract inliers and outliers
-    inliers, coeficcients = seg.segment()
-    extracted_inliers = passthrough_filtered.extract(inliers, negative = False)
-    extracted_outliers = passthrough_filtered.extract(inliers, negative = True)
+    inliers, coefficients = seg.segment() # segmentation returns a array with inliers and their coefficiants. Coefficiants not needed.
+    extracted_inliers = passthrough_filtered.extract(inliers, negative = False) 
+    extracted_outliers = passthrough_filtered.extract(inliers, negative = True) #extraction can be inverted to find points that dont belong to the plane.
     cloud_table = extracted_inliers
     cloud_objects = extracted_outliers
 
+    #publish plane and objects for debugging.
     ransac_filter_pub.publish(pcl_to_ros(cloud_table))
     ransac_objects_pub.publish(pcl_to_ros(cloud_objects))
 
     # TODO: Euclidean Clustering
-    white_cloud = XYZRGB_to_XYZ(cloud_objects)
-    tree = white_cloud.make_kdtree()
-    ec = white_cloud.make_EuclideanClusterExtraction()
+    # measures the distance between points and decides, if the points semantically belong to one object
+    white_cloud = XYZRGB_to_XYZ(cloud_objects) #convert XYZRGB to only RGB.
+    tree = white_cloud.make_kdtree() 
+    ec = white_cloud.make_EuclideanClusterExtraction() 
+    # set parameters to define the points, that belong together.
     ec.set_ClusterTolerance(0.05)
     ec.set_MinClusterSize(50)
     ec.set_MaxClusterSize(700)
@@ -128,6 +126,7 @@ def pcl_callback(pcl_msg):
     print("found clusters: ", np.array(cluster_indices).shape)
 
     # TODO: Create Cluster-Mask Point Cloud to visualize each cluster separately
+    # for debugging and visualization
     cluster_color = get_color_list(len(cluster_indices))
     color_cluster_point_list = []
     for j, indices in enumerate(cluster_indices):
@@ -139,19 +138,14 @@ def pcl_callback(pcl_msg):
                 )
     segmented_cloud = pcl.PointCloud_PointXYZRGB()
     segmented_cloud.from_list(color_cluster_point_list)
-    
-    # TODO: Convert PCL data to ROS messages
-    # TODO: Publish ROS messages
-    
     segmented_cloud_pub.publish(pcl_to_ros(segmented_cloud))
 
-# Exercise-3 TODOs:
+    # Exercise-3 TODOs:
     detected_objects_labels = []
     detected_objects = []
 
     # Classify the clusters! (loop through each detected cluster one at a time)
     for index, pts_list in enumerate(cluster_indices):
-
         
         # Grab the points for the cluster
         pcl_cluster = cloud_objects.extract(pts_list)
@@ -159,7 +153,6 @@ def pcl_callback(pcl_msg):
 
         ros_cluster = pcl_to_ros(pcl_cluster)
         # Compute the Assigociated feature vector
-
         chists = compute_color_histograms(ros_cluster, using_hsv = True)
         normals = get_normals(ros_cluster)
         nhists = compute_normal_histograms(normals)
@@ -200,41 +193,41 @@ def pcl_callback(pcl_msg):
 def pr2_mover(object_list):
 
     # TODO: Initialize variables
-    pick_list = []
-    pick_group = []
-    labels = []
-    centroids = []
+    pick_list = [] # the list of the objects that are to be picked.
+    #pick_group = [] 3 
+    labels = [] #names of all objects found
+    centroids = [] #centers of all points
 
-    not_found_objects = []
+    not_found_objects = [] # list of points that are not found for debugging.
 
-    dict_list = []
+    dict_list = [] # list of dicts to generate the yaml
 
     # TODO: Get/Read parameters
     object_list_param = rospy.get_param('/object_list')
     dropbox_parameters = rospy.get_param('/dropbox')
-    world_name = 3 #rospy.get_param("~world_name")
+    world_name = 3 #rospy.get_param("~world_name") -> does not work needs further investigation.
 
-
-    print('Object list parameters %s' % (object_list_param))
-    print('Dropbox parameters %s' % (dropbox_parameters))
+    # some print statements for debugging.
+    #print('Object list parameters %s' % (object_list_param))
+    #print('Dropbox parameters %s' % (dropbox_parameters))
 
 
     # TODO: Parse parameters into individual variables
-    
+    # gets the pick list out of the parameter server.
     for pl_object in object_list_param:
         pick_list.append(pl_object['name'])
         #pick_group.append(pl_object['group'])
     
 
-    print('Pick list %s' %(pick_list))
-    print('Pick group %s' %(pick_group))
-
+    #print('Pick list %s' %(pick_list))
+    #print('Pick group %s' %(pick_group))
+    # stores the labels of the found objects
     for found_object in object_list:
         labels.append(found_object.label)
 
     print("Found these objects %s" %(labels))
 
-
+    # searches if the requested object is found on the table
     for pick_object in range(len(pick_list)):
         print('pick object', object_list_param[pick_object]['name'])
         try:
@@ -247,6 +240,7 @@ def pr2_mover(object_list):
 
         # TODO: Get the PointCloud for a given object and obtain it's centroid
         points_arr = object_list[index].cloud.to_array()
+        # calculate center of the object and convert it to an array of native python scalars. (np.mean returns a np.float type variable)
         center = np.mean(points_arr, axis=0)[:3]
         center_scalar = []
         pick_pose = Pose()
@@ -254,13 +248,14 @@ def pr2_mover(object_list):
             center_scalar.append(np.asscalar(i))
         pick_pose.position.x, pick_pose.position.y, pick_pose.position.z = center_scalar
         #print(pick_pose)
-        PICK_POSE = pick_pose
 
+        
         centroids.append(center_scalar)
-
+        # set the target dropbox for the pick object.
         target_dropbox = object_list_param[pick_object]['group']
         
-
+        # prepare everything to be sent to the yaml file
+        PICK_POSE = pick_pose
         TEST_SCENE_NUM = Int32()
         TEST_SCENE_NUM.data = world_name
         OBJECT_NAME = String()
@@ -270,6 +265,7 @@ def pr2_mover(object_list):
         PLACE_POSE = Pose()
         # TODO: Assign the arm to be used for pick_place
         WHICH_ARM = String()
+        
         if target_dropbox == "green": 
             WHICH_ARM.data = "right"
             PLACE_POSE.position.x, PLACE_POSE.position.y, PLACE_POSE.position.z = [0, -0.71, 0.7 ]
