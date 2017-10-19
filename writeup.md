@@ -28,7 +28,7 @@ cloud = ros_to_pcl(pcl_msg)
 
 #### Statistical outlier filter
 It turns out that the point cloud is noisy. So the first Step in our perception pipeline is to remove the outliers with a statistical outlier filter.
-![outliers](/assets?outliers.png)
+![outliers](/assets/outliers.png)
 ```python
 outlier_filter = cloud.make_statistical_outlier_filter()
 outlier_filter.set_mean_k(10) #set number of neighboring points to analyze
@@ -61,7 +61,7 @@ After the passthrough we can Separate the Objects on the table from the table.
 #### Euclidean Clustering
 
 As we now see the objects on the table, it is possible to measure the distances between the points and cluster them by their relative positions. This is the last step in Segmentation.
-![segmentation](/assets/segmentation.py)
+![segmentation](/assets/segmentation.png)
 
 ## Recognition
 We recognize the Objects by their color and shape.
