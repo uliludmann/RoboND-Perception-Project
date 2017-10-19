@@ -1,7 +1,4 @@
-## Project: Perception Pick & Place
-### Writeup Template: You can use this file as a template for your writeup if you want to submit it as a markdown file, but feel free to use some other method and submit a pdf if you prefer.
-
-
+# Project: Perception Pick & Place
 Writeup for the Pick&Place Project handed in by Ulrich Ludmann
 
 
@@ -14,8 +11,6 @@ Writeup for the Pick&Place Project handed in by Ulrich Ludmann
 
 ---
 ## Writeup / README
-
-
 
 The challenge in this Project is to implement a perception pipeline into a given ROS Environment. In the End it should recognize all Objects on the Table and provide a yaml file that contains the centroids of Objects, which are requested by the server.
 
