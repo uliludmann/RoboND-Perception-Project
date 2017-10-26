@@ -74,7 +74,7 @@ My final confusion matrix looks like this:
 ### world 2
 ![world2](assets/world2.png)
 ### world 3
-world 3 is really challenging for my algorithm but in 50% of the cases it recognizes all objects correct. 
+world 3 is really challenging for my algorithm but in 50% of the cases it recognizes all objects correctly. 
 ![world3](/assets/world3_final.png)
 ![world3_100](/assets/world3_100.png)
 
